@@ -7,20 +7,30 @@ Created on Tue Aug  9 17:43:55 2022
 
 
 import pandas as pd
+import numpy as np
+from io import StringIO
 
 
 def main():
-    file = open('w_data.dat')
-    lst = []
-    # this for loop removes the lines with less than 8 coloumns
-    # and add the first three elements of lines to a list
-    for line in file:
-        line = line.replace("*", "")
-        if len(line.split()) > 7 and line.split()[0] != 'mo':
-            lst += line.split()[:3]
-    lst = pd.array(lst).reshape(-1, 3)
-    lst = pd.DataFrame(list(lst[1:]), columns=list(
-        lst[0]))  # creating a pandas dataframe
+    # reading file and removing unnecessary characters
+    file = open('w_data.dat').read()
+    file = file.replace("*", "")
+    file = file.replace("<pre>", "")
+    file = file.replace("</pre>", "")
+
+    # removing empty lines
+    file = [x for x in file.split("\n") if x]
+    # calculating median length of lines
+    median_len = np.median([len(x) for x in file])
+    # finding the first line with length > median to assure the first line is the column headers
+    for idx, val in enumerate(file):
+        if len(val) >= median_len:
+            break
+    file = ''.join([str(x) + '\n' for x in file[idx:]])
+    lst = pd.read_fwf(StringIO(file))
+    # remove rows that are not reflecting a day number
+    if lst['Dy'].dtype == 'object':
+        lst = lst.loc[lst['Dy'].apply(lambda x: x.isnumeric())]
     # creating a new column called 'Diff' showing MxT - MnT
     lst['Diff'] = lst['MxT'].astype(float) - lst['MnT'].astype(float)
     # printing the name of the day with the smallest Diff
